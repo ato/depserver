@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.io.StringWriter;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
@@ -60,10 +61,12 @@ public class Depserver {
                     ex.getResponseHeaders().put(CONTENT_TYPE, "text/plain");
                     ex.getResponseSender().send(sb.toString());
                 })
-                .get("/graphviz", new BlockingHandler(ex -> {
+                .get("/graphviz", ex -> {
+                    StringWriter sw = new StringWriter();
+                    Graphviz.build(links, sw);
                     ex.getResponseHeaders().put(CONTENT_TYPE, "text/plain");
-                    Graphviz.build(links, new OutputStreamWriter(ex.getOutputStream(), UTF_8));
-                }))
+                    ex.getResponseSender().send(sw.toString());
+                })
                 .setFallbackHandler(resource(new ClassPathResourceManager(getClass().getClassLoader(), "depserver/static")));
         Undertow.builder().addHttpListener(Integer.parseInt(System.getenv("PORT")), "0.0.0.0")
                 .setHandler(handler)
