@@ -82,8 +82,15 @@ public class Depserver {
         }
     }
 
-    public static void main(String args[]) throws IOException {
-        new Depserver();
+    public static void main(String args[]) throws IOException, InterruptedException {
+        new Depserver().pollLoop();
         System.out.println("Hello, world.");
+    }
+
+    private void pollLoop() throws InterruptedException {
+        while (true) {
+            poll();
+            Thread.sleep(2000);
+        }
     }
 }
