@@ -1,9 +1,11 @@
 package depserver;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import io.undertow.Handlers;
 import io.undertow.Undertow;
 import io.undertow.server.HttpHandler;
+import io.undertow.server.handlers.resource.ClassPathResourceManager;
 import io.undertow.util.Headers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,15 +21,16 @@ import java.nio.channels.SocketChannel;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static io.undertow.Handlers.resource;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class Depserver {
     private final ServerSocketChannel listener;
     private Logger log = LoggerFactory.getLogger(Depserver.class);
     private Set<SocketChannel> connections = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    private final Gson gson = new Gson();
+    private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     private Set<Link> links = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    private List<Record> tmpRecords = new ArrayList<>();
+    private List<Record> allRecords = new ArrayList<>();
 
 
     private Depserver() throws IOException {
@@ -39,21 +42,14 @@ public class Depserver {
 
         HttpHandler handler = Handlers.routing()
                 .get("/all", ex -> {
-                    StringWriter sw = new StringWriter();
-                    for (Record record: tmpRecords) {
-                        sw.append(record.toString()).append('\n');
-                    }
-                    ex.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
-                    ex.getResponseSender().send(sw.toString());
+                    ex.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
+                    ex.getResponseSender().send(gson.toJson(allRecords));
                 })
                 .get("/links", ex -> {
-                    StringWriter sw = new StringWriter();
-                    for (Link link: links) {
-                        sw.append(link.toString()).append('\n');
-                    }
-                    ex.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
-                    ex.getResponseSender().send(sw.toString());
-                });
+                    ex.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
+                    ex.getResponseSender().send(gson.toJson(links));
+                })
+                .setFallbackHandler(resource(new ClassPathResourceManager(getClass().getClassLoader(), "depserver/static")));
         Undertow.builder().addHttpListener(Integer.parseInt(System.getenv("PORT")), "0.0.0.0")
                 .setHandler(handler)
                 .build().start();
@@ -131,7 +127,7 @@ public class Depserver {
             links.add(link);
         }
 
-        tmpRecords = records;
+        allRecords = records;
     }
 
     public static void main(String args[]) throws IOException, InterruptedException {
