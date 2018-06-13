@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.StringWriter;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
@@ -49,6 +48,14 @@ public class Depserver {
                     ex.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
                     ex.getResponseSender().send(gson.toJson(links));
                 })
+                .get("/connections", ex -> {
+                    StringBuilder sb = new StringBuilder();
+                    for (SocketChannel c: connections) {
+                        sb.append(c.getRemoteAddress().toString()).append('\n');
+                    }
+                    ex.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
+                    ex.getResponseSender().send(sb.toString());
+                })
                 .setFallbackHandler(resource(new ClassPathResourceManager(getClass().getClassLoader(), "depserver/static")));
         Undertow.builder().addHttpListener(Integer.parseInt(System.getenv("PORT")), "0.0.0.0")
                 .setHandler(handler)
@@ -67,7 +74,7 @@ public class Depserver {
         }
     }
 
-    void poll() {
+    private void poll() {
         Map<String,Record> all = new HashMap<>();
         Map<String,Record> servers = new HashMap<>();
         List<Record> records = new ArrayList<>();
@@ -110,7 +117,7 @@ public class Depserver {
                 connections.remove(c);
                 try {
                     c.close();
-                } catch (IOException e1) {}
+                } catch (IOException e1) { /* ok */ }
             }
         }
 
