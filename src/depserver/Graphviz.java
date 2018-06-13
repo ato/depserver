@@ -13,6 +13,6 @@ public class Graphviz {
         for (Link link: links) {
             out.write("\"" + link.client() + "\" -> \"" + link.server() + "\";\n");
         }
-        out.write("\n");
+        out.write("}\n");
     }
 }
