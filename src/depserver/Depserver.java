@@ -72,10 +72,10 @@ public class Depserver {
                         break;
                     }
                     Record record = gson.fromJson(line, Record.class);
-
+                    log.info(record.toString());
                 }
                 c.read(buf);
-            } catch (IOException e) {
+            } catch (Exception e) {
                 log.warn("error recving", e);
                 connections.remove(c);
             }
@@ -88,7 +88,7 @@ public class Depserver {
     }
 
     private void pollLoop() throws InterruptedException {
-        while (true) {
+        while (listener.isOpen()) {
             poll();
             Thread.sleep(2000);
         }
