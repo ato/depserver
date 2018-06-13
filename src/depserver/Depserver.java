@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import io.undertow.Handlers;
 import io.undertow.Undertow;
 import io.undertow.server.HttpHandler;
+import io.undertow.server.handlers.BlockingHandler;
 import io.undertow.server.handlers.resource.ClassPathResourceManager;
 import io.undertow.util.Headers;
 import org.slf4j.Logger;
@@ -12,15 +13,18 @@ import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static io.undertow.Handlers.resource;
+import static io.undertow.util.Headers.CONTENT_TYPE;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class Depserver {
@@ -41,11 +45,11 @@ public class Depserver {
 
         HttpHandler handler = Handlers.routing()
                 .get("/all", ex -> {
-                    ex.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
+                    ex.getResponseHeaders().put(CONTENT_TYPE, "application/json");
                     ex.getResponseSender().send(gson.toJson(allRecords));
                 })
                 .get("/links", ex -> {
-                    ex.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
+                    ex.getResponseHeaders().put(CONTENT_TYPE, "application/json");
                     ex.getResponseSender().send(gson.toJson(links));
                 })
                 .get("/connections", ex -> {
@@ -53,12 +57,18 @@ public class Depserver {
                     for (SocketChannel c: connections) {
                         sb.append(c.getRemoteAddress().toString()).append('\n');
                     }
-                    ex.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
+                    ex.getResponseHeaders().put(CONTENT_TYPE, "text/plain");
                     ex.getResponseSender().send(sb.toString());
                 })
+                .get("/graphviz", new BlockingHandler(ex -> {
+                    ex.getResponseHeaders().put(CONTENT_TYPE, "text/plain");
+                    Graphviz.build(links, new OutputStreamWriter(ex.getOutputStream(), UTF_8));
+                }))
                 .setFallbackHandler(resource(new ClassPathResourceManager(getClass().getClassLoader(), "depserver/static")));
         Undertow.builder().addHttpListener(Integer.parseInt(System.getenv("PORT")), "0.0.0.0")
                 .setHandler(handler)
+                .setWorkerThreads(2)
+                .setIoThreads(4)
                 .build().start();
     }
 

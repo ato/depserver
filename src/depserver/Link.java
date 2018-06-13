@@ -40,4 +40,12 @@ public class Link {
                 ", sservice='" + sservice + '\'' +
                 '}';
     }
+
+    public String client() {
+        return chost + " " + cservice;
+    }
+
+    public String server() {
+        return shost + " " + sservice;
+    }
 }
