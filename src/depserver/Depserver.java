@@ -86,7 +86,6 @@ public class Depserver {
             }
         }
 
-        ByteBuffer buf = ByteBuffer.allocate(8192);
         for (SocketChannel c: connections) {
             try {
                 log.info("recving from {}", c.getRemoteAddress());
@@ -110,7 +109,6 @@ public class Depserver {
                     all.put(record.localaddr, record);
                     records.add(record);
                 }
-                c.read(buf);
             } catch (Exception e) {
                 log.warn("error recving", e);
                 connections.remove(c);
