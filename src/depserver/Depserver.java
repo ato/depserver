@@ -26,7 +26,7 @@ public class Depserver {
 
     private Depserver() throws IOException {
         listener = ServerSocketChannel.open();
-        listener.bind(InetSocketAddress.createUnresolved("0.0.0.0", 1666));
+        listener.bind(new InetSocketAddress("0.0.0.0", 1666));
         Thread t = new Thread(this::acceptLoop);
         t.setDaemon(true);
         t.start();
