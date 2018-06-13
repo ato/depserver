@@ -1,7 +1,9 @@
 package depserver;
 
 import com.google.gson.Gson;
+import io.undertow.Handlers;
 import io.undertow.Undertow;
+import io.undertow.server.HttpHandler;
 import io.undertow.util.Headers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +27,7 @@ public class Depserver {
     private Set<SocketChannel> connections = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Gson gson = new Gson();
     private Set<Link> links = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private List<Record> tmpRecords = new ArrayList<>();
 
 
     private Depserver() throws IOException {
@@ -34,15 +37,25 @@ public class Depserver {
         t.setDaemon(true);
         t.start();
 
-        Undertow.builder().addHttpListener(Integer.parseInt(System.getenv("PORT")), "0.0.0.0")
-                .setHandler(ex -> {
+        HttpHandler handler = Handlers.routing()
+                .get("/all", ex -> {
+                    StringWriter sw = new StringWriter();
+                    for (Record record: tmpRecords) {
+                        sw.append(record.toString()).append('\n');
+                    }
+                    ex.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
+                    ex.getResponseSender().send(sw.toString());
+                })
+                .get("/links", ex -> {
                     StringWriter sw = new StringWriter();
                     for (Link link: links) {
                         sw.append(link.toString()).append('\n');
                     }
                     ex.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
                     ex.getResponseSender().send(sw.toString());
-                })
+                });
+        Undertow.builder().addHttpListener(Integer.parseInt(System.getenv("PORT")), "0.0.0.0")
+                .setHandler(handler)
                 .build().start();
     }
 
@@ -90,7 +103,6 @@ public class Depserver {
                     if (record.type.equals("L")) continue; // TODO
 
                     record.clean();
-                    log.info(record.toString());
 
                     if (record.type.equals("S")) {
                         servers.put(record.localaddr, record);
@@ -120,6 +132,8 @@ public class Depserver {
             }
             links.add(link);
         }
+
+        tmpRecords = records;
     }
 
     public static void main(String args[]) throws IOException, InterruptedException {
